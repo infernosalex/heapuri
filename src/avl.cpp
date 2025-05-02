@@ -119,6 +119,56 @@ AVLNode* AVLTree::searchRecursive(AVLNode *node, int key) const {
     }
 }
 
+
+AVLNode* AVLTree::deleteRecursive(AVLNode *node, int key) {
+    // delete
+    if (!node) {
+        return node; // key not found
+    }
+
+    // delete left subtree
+    if (key < node->key) {
+        node->left = deleteRecursive(node->left, key);
+    }
+    // delete right subtree
+    else if (key > node->key) {
+        node->right = deleteRecursive(node->right, key);
+    }
+
+    // node with only one child or no child
+    else {
+        if (!node->left || !node->right) {
+            AVLNode *temp = node->left ? node->left : node->right;
+
+            // no child case
+            if (!temp) {
+                temp = node;
+                node = nullptr;
+            } else { // one child case
+                // copy the contents of the non-empty child
+                *node = *temp;
+            }
+            delete temp;
+        } else {
+            AVLNode* temp = findMin(node->right);
+
+            // copy the inorder successor's data to this node
+            node->key = temp->key;
+
+            // delete the inorder successor
+            node->right = deleteRecursive(node->right, temp->key);
+        }
+    }
+
+    // one node case
+    if (!node) {
+        return node;
+    }
+
+    // update height + balance the current node
+    return balance(node);
+}
+
 void AVLTree::destroyRecursive(AVLNode *node) {
     if (node) {
         destroyRecursive(node->left);
@@ -139,7 +189,7 @@ void AVLTree::insert(int key) {
 }
 
 void AVLTree::remove(int key) {
-    // root = deleteRecursive(root, key);
+    root = deleteRecursive(root, key);
 }
 
 bool AVLTree::search(int key) const {
