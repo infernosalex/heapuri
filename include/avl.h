@@ -26,7 +26,7 @@ private:
     AVLNode* insertRecursive(AVLNode *node, int key);
     AVLNode* findMin(AVLNode *node);
     AVLNode* searchRecursive(AVLNode *node, int key) const;
-    // TODO AVLNode* deleteRecursive(AVLNode *node, int key);
+    AVLNode* deleteRecursive(AVLNode *node, int key);
     void destroyRecursive(AVLNode *node);
 
 public:
