@@ -9,6 +9,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 include_directories(include)
 
 # source files
-set(AVL_SOURCES
+set(SOURCES
     src/avl.cpp
+    src/scapegoat.cpp
+    src/main.cpp
 )
+
+# create the executable
+add_executable(${PROJECT_NAME} ${SOURCES})
