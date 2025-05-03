@@ -107,6 +107,14 @@ AVLNode* AVLTree::findMin(AVLNode *node) {
     return current;
 }
 
+AVLNode* AVLTree::findMax(AVLNode *node) {
+    AVLNode* current = node;
+    // find the rightmost leaf
+    while (current && current->right != nullptr) {
+        current = current->right;
+    }
+    return current;
+}
 
 AVLNode* AVLTree::searchRecursive(AVLNode *node, int key) const {
     if (!node || node->key == key) {
@@ -119,6 +127,87 @@ AVLNode* AVLTree::searchRecursive(AVLNode *node, int key) const {
     }
 }
 
+AVLNode* AVLTree::floorRecursive(AVLNode* node, int key) const {
+    if (!node) return nullptr;
+    
+    // if key equals node's key, we found exact floor
+    if (node->key == key) return node;
+    
+    // if key is smaller than node's key, look in left subtree
+    if (key < node->key) return floorRecursive(node->left, key);
+    
+    // if key is greater than node's key, look in right subtree
+    // the current node could be the floor, but we might find a closer one in right subtree
+    AVLNode* rightFloor = floorRecursive(node->right, key);
+    if (rightFloor) return rightFloor;
+    
+    // if nothing found in right subtree, this node is the floor
+    return node;
+}
+
+AVLNode* AVLTree::ceilingRecursive(AVLNode* node, int key) const {
+    if (!node) return nullptr;
+    
+    // if key equals node's key, we found exact ceiling
+    if (node->key == key) return node;
+    
+    // if key is greater than node's key, look in right subtree
+    if (key > node->key) return ceilingRecursive(node->right, key);
+    
+    // if key is smaller than node's key, look in left subtree
+    // the current node could be the ceiling, but we might find a closer one in left subtree
+    AVLNode* leftCeiling = ceilingRecursive(node->left, key);
+    if (leftCeiling) return leftCeiling;
+    
+    // if nothing found in left subtree, this node is the ceiling
+    return node;
+}
+
+void AVLTree::rangeQueryRecursive(AVLNode* node, int x, int y, std::vector<int>& result) const {
+    if (!node) return;
+    
+    // if node's key is greater than x, explore left subtree
+    if (x < node->key) {
+        rangeQueryRecursive(node->left, x, y, result);
+    }
+    
+    // add current node's key if it's within range [x, y]
+    if (x <= node->key && node->key <= y) {
+        result.push_back(node->key);
+    }
+    
+    // if node's key is less than y, explore right subtree
+    if (node->key < y) {
+        rangeQueryRecursive(node->right, x, y, result);
+    }
+}
+
+void AVLTree::inOrderTraversal(AVLNode* node, std::vector<AVLNode*>& nodes) const {
+    if (!node) return;
+    inOrderTraversal(node->left, nodes);
+    nodes.push_back(node);
+    inOrderTraversal(node->right, nodes);
+}
+
+AVLNode* AVLTree::buildBalancedTree(const std::vector<AVLNode*>& nodes, int start, int end) {
+    if (start > end) return nullptr;
+    
+    int mid = (start + end) / 2;
+    AVLNode* node = nodes[mid];
+    
+    // reset pointers
+    node->left = nullptr;
+    node->right = nullptr;
+    
+    // recursively build left and right subtrees
+    node->left = buildBalancedTree(nodes, start, mid - 1);
+    node->right = buildBalancedTree(nodes, mid + 1, end);
+    
+    // update height
+    updateHeight(node);
+    
+    return node;
+}
 
 AVLNode* AVLTree::deleteRecursive(AVLNode *node, int key) {
     // delete
@@ -198,4 +287,86 @@ bool AVLTree::search(int key) const {
 
 bool AVLTree::isEmpty() const {
     return root == nullptr;
+}
+
+AVLTree AVLTree::join(const AVLTree& other) {
+    AVLTree result;
+    
+    // collect nodes from both trees
+    std::vector<AVLNode*> thisNodes;
+    std::vector<AVLNode*> otherNodes;
+    std::vector<AVLNode*> mergedNodes;
+    
+    inOrderTraversal(root, thisNodes);
+    inOrderTraversal(other.root, otherNodes);
+    
+    // merge the sorted arrays of nodes
+    size_t i = 0, j = 0;
+    while (i < thisNodes.size() && j < otherNodes.size()) {
+        if (thisNodes[i]->key < otherNodes[j]->key) {
+            result.insert(thisNodes[i]->key);
+            i++;
+        } else if (thisNodes[i]->key > otherNodes[j]->key) {
+            result.insert(otherNodes[j]->key);
+            j++;
+        } else {
+            // if both have the same key, just insert once
+            result.insert(thisNodes[i]->key);
+            i++;
+            j++;
+        }
+    }
+    
+    // add remaining elements
+    while (i < thisNodes.size()) {
+        result.insert(thisNodes[i]->key);
+        i++;
+    }
+    
+    while (j < otherNodes.size()) {
+        result.insert(otherNodes[j]->key);
+        j++;
+    }
+    
+    return result;
+}
+
+int AVLTree::floor(int key) const {
+    AVLNode* floorNode = floorRecursive(root, key);
+    if (!floorNode) {
+        throw std::runtime_error("No floor value exists");
+    }
+    return floorNode->key;
+}
+
+int AVLTree::ceiling(int key) const {
+    AVLNode* ceilingNode = ceilingRecursive(root, key);
+    if (!ceilingNode) {
+        throw std::runtime_error("No ceiling value exists");
+    }
+    return ceilingNode->key;
+}
+
+std::vector<int> AVLTree::rangeQuery(int x, int y) const {
+    std::vector<int> result;
+    rangeQueryRecursive(root, x, y, result);
+    return result;
+}
+
+void AVLTree::printRange(int x, int y) const {
+    std::vector<int> rangeValues = rangeQuery(x, y);
+    
+    if (rangeValues.empty()) {
+        std::cout << "No values in range [" << x << ", " << y << "]" << std::endl;
+        return;
+    }
+    
+    std::cout << "Values in range [" << x << ", " << y << "]: ";
+    for (size_t i = 0; i < rangeValues.size(); ++i) {
+        std::cout << rangeValues[i];
+        if (i < rangeValues.size() - 1) {
+            std::cout << ", ";
+        }
+    }
+    std::cout << std::endl;
 }
