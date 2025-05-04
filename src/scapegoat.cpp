@@ -29,10 +29,10 @@ SGNode* ScapegoatTree::findScapegoat(SGNode *node, int key) {
     }
     
     if (key < node->key) {
-        SGNode* leftScapegoat = findScapegoat(node->left, key);
+        SGNode* leftScapegoat = node->left ? findScapegoat(node->left, key) : nullptr;
         return leftScapegoat ? leftScapegoat : node;
     } else {
-        SGNode* rightScapegoat = findScapegoat(node->right, key);
+        SGNode* rightScapegoat = node->right ? findScapegoat(node->right, key) : nullptr;
         return rightScapegoat ? rightScapegoat : node;
     }
 }
@@ -58,8 +58,15 @@ SGNode* ScapegoatTree::rebuildTree(const std::vector<SGNode*> &nodes, int start,
 }
 
 SGNode* ScapegoatTree::rebuildSubtree(SGNode *scapegoat) {
+    if (!scapegoat) return nullptr;
+    
     std::vector<SGNode*> nodes;
     flattenToVector(scapegoat, nodes);
+    
+    // check if nodes vector is empty
+    if (nodes.empty()) {
+        return nullptr;
+    }
     
     for (auto node : nodes) {
         node->left = nullptr;
@@ -218,12 +225,6 @@ SGNode* ScapegoatTree::deleteRecursive(SGNode *node, int key) {
         node->right = deleteRecursive(node->right, current->key);
     }
     
-    // check if rebuild is needed after deletion
-    if (size < alpha * maxSize) {
-        root = rebuildSubtree(root);
-        maxSize = size;
-    }
-    
     return node;
 }
 
@@ -267,18 +268,18 @@ void ScapegoatTree::insert(int key) {
             } else {
                 // find parent of scapegoat
                 node = root;
-                while (node) {
-                    if ((node->left && node->left->key == scapegoat->key) || 
-                        (node->right && node->right->key == scapegoat->key)) {
-                        break;
-                    }
+                SGNode* parent = nullptr;
+                while (node && node != scapegoat) {
+                    parent = node;
                     node = (key < node->key) ? node->left : node->right;
                 }
                 
-                if (node->left == scapegoat) {
-                    node->left = rebuildSubtree(scapegoat);
-                } else {
-                    node->right = rebuildSubtree(scapegoat);
+                if (parent) {
+                    if (parent->left == scapegoat) {
+                        parent->left = rebuildSubtree(scapegoat);
+                    } else {
+                        parent->right = rebuildSubtree(scapegoat);
+                    }
                 }
             }
         }
@@ -286,7 +287,23 @@ void ScapegoatTree::insert(int key) {
 }
 
 void ScapegoatTree::remove(int key) {
+    if (!root) return;
+    
     root = deleteRecursive(root, key);
+    
+    // check if rebuild is needed after deletion
+    if (size > 0 && maxSize > 0 && size < alpha * maxSize) {
+        if (root) {
+            root = rebuildSubtree(root);
+            maxSize = size;
+        }
+    }
+    
+    // handle the special case where tree becomes empty
+    if (size == 0) {
+        maxSize = 0;
+        root = nullptr;
+    }
 }
 
 bool ScapegoatTree::search(int key) const {
@@ -294,7 +311,7 @@ bool ScapegoatTree::search(int key) const {
 }
 
 bool ScapegoatTree::isEmpty() const {
-    return root == nullptr;
+    return size == 0;
 }
 
 ScapegoatTree ScapegoatTree::join(const ScapegoatTree& other) {
